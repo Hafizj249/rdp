@@ -1,38 +1,38 @@
-name: FreeRDP
-
+name: Windows-RDP-Fix
 on: workflow_dispatch
-
 jobs:
   build:
-
     runs-on: windows-latest
-    timeout-minutes: 9999
-
     steps:
-    - name: Downloading Ngrok.
+    - name: Mengunduh Ngrok
       run: |
-        Invoke-WebRequest https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
-        Invoke-WebRequest https://raw.githubusercontent.com/30dayscoding/rdp/main/start.bat -OutFile start.bat
-        Invoke-WebRequest https://raw.githubusercontent.com/30dayscoding/rdp/main/wallpaper.jpg -OutFile wallpaper.jpg
-        Invoke-WebRequest https://raw.githubusercontent.com/30dayscoding/rdp/main/wallpaper.bat -OutFile wallpaper.bat
-    - name: Extracting Ngrok Files.
-      run: Expand-Archive ngrok.zip
-    - name: Connecting to your Ngrok account.
-      run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
-      env:
-        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
-    - name: Activating RDP access.
-      run: | 
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
+        Invoke-WebRequest https://equinox.io -OutFile ngrok.zip
+        Expand-Archive ngrok.zip
+    - name: Otentikasi Ngrok
+      run: .\ngrok\ngrok.exe config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
+    - name: Mengaktifkan Akses RDP Windows
+      run: |
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
-        copy wallpaper.jpg D:\a\wallpaper.jpg
-        copy wallpaper.bat D:\a\wallpaper.bat
-    - name: Creating Tunnel.
-      run: Start-Process Powershell -ArgumentList '-Noexit -Command ".\ngrok\ngrok.exe tcp 3389"'
-    - name: Connecting to your RDP.
-      run: cmd /c start.bat
-    - name: RDP is ready!
-      run: | 
-        Invoke-WebRequest https://github.com/30dayscoding/rdp/raw/main/loop.ps1 -OutFile loop.ps1
-        ./loop.ps1
+    - name: Membuat Akun User Baru
+      run: |
+        net user Administrator Password123 /add
+        net localgroup Administrators Administrator /add
+    - name: Memunculkan IP RDP & Menjalankan Tunnel
+      run: |
+        Start-Process -FilePath ".\ngrok\ngrok.exe" -ArgumentList "tcp 3389"
+        Start-Sleep -Seconds 10
+        $NgrokUrl = (Invoke-RestMethod -Uri "http://127.0.0").tunnels.public_url
+        Write-Host "=========================================="
+        Write-Host "ALAMAT RDP ANDA: $NgrokUrl"
+        Write-Host "USERNAME: Administrator"
+        Write-Host "PASSWORD: Password123"
+        Write-Host "=========================================="
+    - name: Menjaga RDP Tetap Aktif
+      run: |
+        $loop = 360
+        do {
+          Write-Host "RDP Aktif... Sisa waktu: $loop menit"
+          Start-Sleep -Seconds 60
+          $loop--
+        } while ($loop -gt 0)
